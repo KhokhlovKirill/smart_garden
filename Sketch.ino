@@ -1,7 +1,4 @@
-/* Тестовая локализация меню!
-
-*/
-void(* resetFunc) (void) = 0;
+void(* resetFunc) (void) = 0;  // Функция перезагрузки
 
 // Подключение библиотек
 #include "GyverButton.h"
@@ -9,8 +6,23 @@ void(* resetFunc) (void) = 0;
 #include <EEPROM.h>
 //_________________________
 
+// Пресеты
 
-// Значения пресетов
+// Название пресетов
+
+const char *namesPreset[]  = {
+  "Period",   // 0
+  "Work",     // 1
+  "Stop",     // 2
+  "Stop",     // 3
+  "Stop",     // 4
+  "Stop",     // 5
+};
+
+//_____________________________________
+
+  // Значения пресетов
+
   // Пресет 1
   const byte MoistureForWateringPreset1 = 0;
   const byte TemperaturePreset1 = 0;
@@ -49,11 +61,13 @@ void(* resetFunc) (void) = 0;
 
 //___________________________
 
+//_____________________________________________________________
+
 
 
 // Объявление директив #define
 #define TERMIST_B 4300 
- #define PHOTORESIST A2
+ #define PHOTORESIST A4
 #define VIN 5.0
 
 #define POMP 5 // Помпа (MOSFET)
@@ -63,6 +77,7 @@ void(* resetFunc) (void) = 0;
 #define BUT_ENTER 3 // Кнопка ввод
 #define BUT_STOP 5 // Кнопка аварийной остановки помпы
 #define SOILT 7 // Датчик влажности почвы (Транзистор)
+#define LED 6
 #define SOIL A0 // Датчик влажности почвы
 //_____________________________
 
@@ -92,6 +107,10 @@ unsigned long currentTime;
 unsigned long currentTime1; 
 unsigned long currentTime2; 
 unsigned long currentTime3; 
+unsigned long currentTime4; 
+boolean ledIsTurnTemp;
+boolean ledIsTurnLighting;
+boolean ledIsTurn;
 //___________________________________
 
 
@@ -135,6 +154,7 @@ byte lamp[8]= {
 void setup() {
   // put your setup code here, to run once:
 pinMode(SOIL, OUTPUT);
+pinMode(LED, OUTPUT);
   
 lcd.begin(16, 2); // Инициализация экрана
 
@@ -170,6 +190,7 @@ lightingForSignal = EEPROM.read(8); // Освещенность для сигн�
 pinMode(POMP, OUTPUT);
 digitalWrite(POMP, LOW);
 
+
 }
 
 void loop() {
@@ -181,7 +202,7 @@ if (millis() - currentTime3 > 5000)
 { 
     currentTime3 = millis();        
     lightingResist = analogRead(PHOTORESIST);
-lighting = map(lightingResist, 250, 960, 0, 100);
+lighting = map(lightingResist, 0, 1023, 0, 100);
 }
 
 
@@ -201,22 +222,38 @@ Serial.println(temperature);
 
 if (temperature <= temperatureForSignal){
   lcd.setCursor(15, 0);
-  lcd.write(byte(2));
+  lcd.write(byte(1));
+  
+  ledIsTurnTemp = true;
   }
   if (temperature > temperatureForSignal){
   lcd.setCursor(15, 0);
   lcd.print(" ");
+
+  ledIsTurnTemp = false;
   }
 
 
   if (lighting <= lightingForSignal){
   lcd.setCursor(15, 1);
-  lcd.print("T");
+  lcd.write(byte(2));
+
+  ledIsTurnLighting = true;
   }
   if (lighting > lightingForSignal){
   lcd.setCursor(15, 1);
   lcd.print(" ");
+
+  ledIsTurnLighting = false;
   }
+
+
+  if (ledIsTurnTemp || ledIsTurnLighting) ledIsTurn = true;
+  else ledIsTurn = false;
+
+
+  if (ledIsTurn) digitalWrite(LED, HIGH);
+  else digitalWrite(LED, LOW);
 
 //   Считывание показайний с датчика влажности почвы
         // Переменная текущего времени
@@ -239,6 +276,7 @@ if (soilMoisture < MoistureForWatering){
   } else digitalWrite(POMP, LOW);
   }   
 //__________________________
+
 
 
 // Основной экран
@@ -266,6 +304,7 @@ if (soilMoisture < MoistureForWatering){
   lcd.print("-");
   lcd.print(lighting);
   lcd.print("%");
+
   //____________________________
   
 //______________________________________
@@ -639,7 +678,7 @@ void temperatureSet(){
   lcd.print("Te\274\276epa\277ypa:");
   lcd.setCursor(4,1);
   lcd.print(temperatureForSignal);
-  lcd.print(" %");
+  lcd.print("\x99""C");
 
 
   if (but_up.isClick()) {           
@@ -681,11 +720,13 @@ void lightingSet(){
     lightingForSignal--;                        
   }
   if (but_up.isStep()) {          
-    lightingForSignal++;                       
+    lightingForSignal = lightingForSignal + 10;                       
   }
   if (but_down.isStep()) {            
-    lightingForSignal--;                       
+    lightingForSignal = lightingForSignal - 10;                       
   }
+
+    if (lightingForSignal >= 101) lightingForSignal = 100;
 
     if (but_enter.isSingle()){
       EEPROM.update(8, lightingForSignal);
@@ -702,10 +743,10 @@ byte posMenu = 0;
   lcd.clear();
   for (;;){
   lcd.setCursor(1, 0);
-  lcd.print("Morkov"); // Время полива
+  lcd.print(namesPreset[0]); // Время полива
 
     lcd.setCursor(1, 1);
-  lcd.print("Kartofel"); // Влаж для полива
+  lcd.print(namesPreset[1]); // Влаж для полива
 
   if (but_down.isClick()) posMenu = posMenu+ 1;
   if (but_up.isClick()) posMenu = posMenu - 1;
@@ -758,10 +799,10 @@ byte posMenu = 1;
   lcd.clear();
   for (;;){
   lcd.setCursor(1, 0);
-  lcd.print("Ukrop"); // Температура
+  lcd.print(namesPreset[2]); // Температура
 
     lcd.setCursor(1, 1);
-  lcd.print("Svekla"); // Влаж для полива
+  lcd.print(namesPreset[3]); // Влаж для полива
 
   if (but_down.isClick()) posMenu = posMenu+ 1;
   if (but_up.isClick()) posMenu = posMenu - 1;
@@ -819,10 +860,10 @@ byte posMenu = 1;
   lcd.clear();
   for (;;){
   lcd.setCursor(1, 0);
-  lcd.print("Cvetok"); // Температура
+  lcd.print(namesPreset[4]); // Температура
 
     lcd.setCursor(1, 1);
-  lcd.print("Oc\263e\346e\275\270e"); // Влаж для полива
+  lcd.print(namesPreset[5]); // Влаж для полива
 
   if (but_down.isClick()) posMenu = posMenu+ 1;
   if (but_up.isClick()) posMenu = posMenu - 1;
