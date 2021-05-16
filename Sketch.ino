@@ -6,6 +6,7 @@ void(* resetFunc) (void) = 0;  // Функция перезагрузки
 #include <EEPROM.h>
 //_________________________
 
+
 // Пресеты
 
 // Название пресетов
@@ -20,6 +21,7 @@ const char *namesPreset[]  = {
 };
 
 //_____________________________________
+
 
   // Значения пресетов
 
@@ -114,7 +116,8 @@ boolean ledIsTurn;
 //___________________________________
 
 
-byte water[8]= {
+// Символы для LCD-экрана
+byte water[8]= { // Капля
             B00100,
             B00100,
             B01110,
@@ -125,7 +128,7 @@ byte water[8]= {
 
 };
 
-byte temp[8]= {
+byte temp[8]= { // Температура
             B00101,
             B00100,
             B00100,
@@ -137,7 +140,7 @@ byte temp[8]= {
 };
 
 
-byte lamp[8]= {
+byte lamp[8]= { // Лампочка
             B01110,
             B10001,
             B10101,
@@ -147,20 +150,29 @@ byte lamp[8]= {
             B00100
 
 };
-
+//________________________________________
 
 
 
 void setup() {
   // put your setup code here, to run once:
-pinMode(SOIL, OUTPUT);
-pinMode(LED, OUTPUT);
+
+  
+// Установка режимов для пинов
+pinMode(SOIL, OUTPUT); // Датчик влаж почвы
+pinMode(LED, OUTPUT); // Светодиод
+pinMode(POMP, OUTPUT); // Помпа (Реле)
+//______________________________
+
   
 lcd.begin(16, 2); // Инициализация экрана
 
+// Инициализация символов
 lcd.createChar(0, water);
 lcd.createChar(1, temp);
 lcd.createChar(2, lamp);
+//____________________________
+
 
 // Установка режима опроса кнопки на автоматический
  but_up.setTickMode(AUTO);
@@ -187,26 +199,26 @@ lightingForSignal = EEPROM.read(8); // Освещенность для сигн�
 //_____________________________________
 
 
-pinMode(POMP, OUTPUT);
-digitalWrite(POMP, LOW);
 
-
+digitalWrite(POMP, LOW); // Отключение помпы
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-but_enter.tick();
+but_enter.tick(); // Принудительное считывание значения с кнопки Enter
 
 
+// Получение данных о освещенности
 if (millis() - currentTime3 > 5000) 
 { 
     currentTime3 = millis();        
     lightingResist = analogRead(PHOTORESIST);
 lighting = map(lightingResist, 0, 1023, 0, 100);
 }
+//____________________________________________________
 
 
-
+// Получение данных о температуре
 if (millis() - currentTime2 > 5000) 
 { 
     currentTime2 = millis();        
@@ -219,7 +231,8 @@ Serial.println(temperature);
 
 
 
-
+// Сигнализация при отклонениях
+  // Температура
 if (temperature <= temperatureForSignal){
   lcd.setCursor(15, 0);
   lcd.write(byte(1));
@@ -232,8 +245,9 @@ if (temperature <= temperatureForSignal){
 
   ledIsTurnTemp = false;
   }
+  //________________________________________
 
-
+  // Освещенность
   if (lighting <= lightingForSignal){
   lcd.setCursor(15, 1);
   lcd.write(byte(2));
@@ -246,18 +260,20 @@ if (temperature <= temperatureForSignal){
 
   ledIsTurnLighting = false;
   }
+  //____________________________________ 
 
-
+  // Включение светодиода
   if (ledIsTurnTemp || ledIsTurnLighting) ledIsTurn = true;
   else ledIsTurn = false;
 
 
   if (ledIsTurn) digitalWrite(LED, HIGH);
   else digitalWrite(LED, LOW);
+  //_______________________________________________________________
+//_________________________________________________________
+  
 
-//   Считывание показайний с датчика влажности почвы
-        // Переменная текущего времени
-        
+//   Считывание показайний с датчика влажности почвы       
 if (millis() - currentTime > (regularControl * 60000)) 
 { 
     currentTime = millis();        
@@ -494,11 +510,11 @@ posMenu = 2;
 
   if (but_enter.isSingle()){
     switch (posMenu) {
-      case 0:
+      case 1:
       Serial.println("Restart");
       restart();
       break;
-      case 1:
+      case 2:
       resetSet();
       break;
       
@@ -574,11 +590,11 @@ byte posMenu = 0;
 }
 //_________________________________________________
 
-
+// Функция полива
 void watering(){
   lcd.clear();
   for (;;) {
- 
+  // Вывод на экран
   lcd.setCursor(5, 0);
   lcd.print("\250o\273\270\263");
   lcd.setCursor(5, 1);
@@ -587,11 +603,13 @@ void watering(){
   lcd.print(soilMoisture);
   lcd.print("%");
   //____________________________
-  
+
+  // Включение помпы
   digitalWrite(POMP, HIGH);
   delay(50);
+  //_________________________
 
-
+  // Отключение помпы
       digitalWrite(SOILT, HIGH);
     soilResistance = analogRead(SOIL);
     Serial.println(soilResistance);
@@ -602,10 +620,10 @@ void watering(){
   lcd.clear();
   break;
   }
-  
+  //_______________________
   
   }}
-
+//_________________________________________________
 
 
   void menuSettings2() { // Меню настроек
@@ -617,7 +635,7 @@ byte posMenu = 1;
   lcd.print("Te\274\276epa\277ypa"); // Температура
 
     lcd.setCursor(1, 1);
-  lcd.print("Oc\263e\346e\275\270e"); // Влаж для полива
+  lcd.print("Oc\263e\346e\275\270e"); // Освещение
 
   if (but_down.isClick()) posMenu = posMenu+ 1;
   if (but_up.isClick()) posMenu = posMenu - 1;
@@ -737,16 +755,16 @@ void lightingSet(){
 }
 
 
-void menuPresets() { // Меню настроек
+void menuPresets() { // Меню пресетов 1
 byte posMenu = 0;
   
   lcd.clear();
   for (;;){
   lcd.setCursor(1, 0);
-  lcd.print(namesPreset[0]); // Время полива
+  lcd.print(namesPreset[0]); // Пресет 1
 
     lcd.setCursor(1, 1);
-  lcd.print(namesPreset[1]); // Влаж для полива
+  lcd.print(namesPreset[1]); // Пресет 2
 
   if (but_down.isClick()) posMenu = posMenu+ 1;
   if (but_up.isClick()) posMenu = posMenu - 1;
@@ -793,16 +811,16 @@ byte posMenu = 0;
    }
 //__________________________________________________
 
-  void menuPresets2() { // Меню настроек
+  void menuPresets2() { // Меню пресетов 2
 byte posMenu = 1;
   
   lcd.clear();
   for (;;){
   lcd.setCursor(1, 0);
-  lcd.print(namesPreset[2]); // Температура
+  lcd.print(namesPreset[2]); // Пресет 3
 
     lcd.setCursor(1, 1);
-  lcd.print(namesPreset[3]); // Влаж для полива
+  lcd.print(namesPreset[3]); // Пресет 4
 
   if (but_down.isClick()) posMenu = posMenu+ 1;
   if (but_up.isClick()) posMenu = posMenu - 1;
@@ -854,16 +872,16 @@ menuPresets3();
    }
 //__________________________________________________
 
-  void menuPresets3() { // Меню настроек
+  void menuPresets3() { // Меню пресетов 3
 byte posMenu = 1;
   
   lcd.clear();
   for (;;){
   lcd.setCursor(1, 0);
-  lcd.print(namesPreset[4]); // Температура
+  lcd.print(namesPreset[4]); // Пресет 5
 
     lcd.setCursor(1, 1);
-  lcd.print(namesPreset[5]); // Влаж для полива
+  lcd.print(namesPreset[5]); // Пресет 6
 
   if (but_down.isClick()) posMenu = posMenu+ 1;
   if (but_up.isClick()) posMenu = posMenu - 1;
@@ -872,7 +890,7 @@ byte posMenu = 1;
   menuPresets2();
   }
   
-  
+ 
   if (posMenu == 1) {
   lcd.setCursor(0, 1);
   lcd.print(" ");  
@@ -916,6 +934,7 @@ posMenu = 2;
 //__________________________________________________
 
 
+// Настройка устройства при выборе пресетов
 void preset1(){
 EEPROM.update(6, MoistureForWateringPreset1);
 EEPROM.update(7, TemperaturePreset1);
@@ -957,3 +976,4 @@ EEPROM.update(7, TemperaturePreset6);
 EEPROM.update(8, LightingPreset6);
 resetFunc();
 }
+//________________________________________________
